@@ -1,0 +1,78 @@
+{% raw %}
+# Configuration du fournisseur AWS
+provider "aws" {
+  region = "{{ region }}"
+}
+
+# Appel du module personnalisé pour déployer un cluster Redis
+module "{{ module_name }}" {
+  source = "{{ module_source }}"
+
+  # Configuration générale du cluster
+  cluster_id      = "{{ cluster_id }}"
+  engine_version  = "{{ engine_version }}"
+  node_type       = "{{ node_type }}"
+  num_cache_nodes = {{ num_cache_nodes }}
+
+  # Configuration réseau
+  subnet_ids         = {{ subnet_ids }}
+  vpc_id             = "{{ vpc_id }}"
+  security_group_ids = {{ security_group_ids }}
+
+  # Configuration des snapshots
+  snapshot_retention_limit = {{ snapshot_retention_limit }}
+  snapshot_window          = "{{ snapshot_window }}"
+
+  # Groupe de paramètres
+  parameter_group_name = "{{ parameter_group_name }}"
+
+  # Chiffrement
+  at_rest_encryption_enabled = {{ at_rest_encryption_enabled }}
+  transit_encryption_enabled = {{ transit_encryption_enabled }}
+  auth_token                 = {% if auth_token %}"{{ auth_token }}"{% else %}null{% endif %}
+
+  # Mode cluster
+  cluster_mode           = "{{ cluster_mode }}"
+  number_of_node_groups  = {{ number_of_node_groups }}
+  replicas_per_node_group = {{ replicas_per_node_group }}
+
+  # Configuration de la journalisation (optionnelle)
+  {% if log_delivery_configuration %}
+  log_delivery_configuration = [
+    {% for log_config in log_delivery_configuration %}
+    {
+      log_type         = "{{ log_config.log_type }}"
+      destination_type = "{{ log_config.destination_type }}"
+      destination      = "{{ log_config.destination }}"
+      log_format       = "{{ log_config.log_format }}"
+    }{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ]
+  {% else %}
+  log_delivery_configuration = []
+  {% endif %}
+
+  # Tags
+  tags = {
+    {% for key, value in tags.items() %}
+    {{ key }} = "{{ value }}"
+    {% endfor %}
+  }
+}
+
+# Outputs pour afficher des informations sur le cluster déployé
+output "primary_endpoint_address" {
+  description = "Adresse de l'endpoint principal du cluster Redis."
+  value       = module.{{ module_name }}.primary_endpoint_address
+}
+
+output "reader_endpoint_address" {
+  description = "Adresse de l'endpoint lecteur du cluster Redis (si applicable)."
+  value       = module.{{ module_name }}.reader_endpoint_address
+}
+
+output "cluster_id" {
+  description = "Identifiant du cluster ElastiCache."
+  value       = module.{{ module_name }}.cluster_id
+}
+{% endraw %}
